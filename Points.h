@@ -46,8 +46,9 @@ void GenerateRandPoints() {
             outputfile << randomNumber(xMin, xMax) << " " << randomNumber(yMin, yMax) << endl;
         outputfile.close();
     }
-    else
+    else{
         cout << "Erro ao gerar o ficheiro de dados" << endl;
+    }
 }
 
 /* Distancia euclideana entre dois pontos */

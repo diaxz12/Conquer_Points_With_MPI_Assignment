@@ -4,15 +4,27 @@
 #include "Points.h"
 #include <mpi.h>
 
-int main()
+int main(int argc, char *argv[])
 {
+
+    //MPI variables
+    int NumberofProcessors, ProcessorID;
+    double TimeStamp;
+    vector<Point> ProcessorPoints;
+
+    MPI_Init(&argc, &argv);
+    MPI_Comm_size(MPI_COMM_WORLD, &NumberofProcessors);
+    MPI_Comm_rank(MPI_COMM_WORLD, &ProcessorID);
+
+    if (ProcessorID == 0)    {
+        TimeStamp = -MPI_Wtime(); // ProcessorID 0 starts measuring time
+    }
+
     cout << "\t\t*******************************************" << endl;
-    cout << "\t\t\tFinding Closest Pair" << endl;
+    cout << "\t\t\tFinding Closest Pair MPI version | ProcessorID=" << ProcessorID << endl;
     cout << "\t\t\tDeveloped By: Luis Dias" << endl;
     cout << "\t\t*******************************************" << endl << endl;
 
-    //Funcao que permite criar o ficheiro com o numero de pontos especificados
-    GenerateRandPoints();
 
     //Rotina para ler as coordenadas do ficheiro "Pontos.txt"
     string line;
@@ -39,10 +51,17 @@ int main()
         cout << "There was a problem opening or reading pair file" << endl;
     }
 
+    //Rotina para dividir o ficheiro conforme o processador em questao "Pontos.txt"
+    int divisionsSize = p.size()/(NumberofProcessors+1);
+
+    for(int i=ProcessorID*divisionsSize;i < (ProcessorID+2)*divisionsSize; i++){
+        ProcessorPoints.push_back(p[i]);
+    }
+
     // Brute-Force Strategy
     vector<Point> minPointsBruteForce;
     clock_t beginBruteForce = clock();
-    minPointsBruteForce = bruteForce(p);
+    minPointsBruteForce = bruteForce(ProcessorPoints);
     clock_t endBruteForce = clock();
     double elapsedSecsBruteForce = double(endBruteForce - beginBruteForce) / CLOCKS_PER_SEC;
     double distMin = EuclideanDistance(minPointsBruteForce[0], minPointsBruteForce[1]);
@@ -57,14 +76,14 @@ int main()
     // Divide & Conquer Strategy
     clock_t beginDivide = clock();
     cout << "Divide & Conquer:" << endl;
-    if (p.size() < 2) { // Para o caso de termos 2 pontos ou menos
+    if (ProcessorPoints.size() < 2) { // Para o caso de termos 2 pontos ou menos
         // retornar o resultado para o par
-        cout << "p1: " << p[0].x << " " << p[0].y << " , p2: " << p[1].x << " " << p[1].y << EuclideanDistance(p[0], p[1]) << endl;
+        cout << "p1: " << ProcessorPoints[0].x << " " << ProcessorPoints[0].y << " , p2: " << ProcessorPoints[1].x << " " << ProcessorPoints[1].y << EuclideanDistance(ProcessorPoints[0], ProcessorPoints[1]) << endl;
     }
     else {
         vector<Point> sortedPx;
         //ordenar a lista de pontos
-        sortedPx = mergeSort(p, "x");
+        sortedPx = mergeSort(ProcessorPoints, "x");
         vector<Point> closestP = closestPair(sortedPx);
         clock_t endDivide = clock();
         double elapsedSecsDevide = double(endDivide - beginDivide) / CLOCKS_PER_SEC;
@@ -73,7 +92,15 @@ int main()
         cout << "Total Running Time of Devide & Conquer: " << elapsedSecsDevide << endl;
         cout << "Devide & Conquer Counter: " << counterDevide << endl;
     }
-    // End of Devide & Conquer Strategy
+    // End of Divide & Conquer Strategy
+
+
+    if (ProcessorID == 0) {
+        TimeStamp += MPI_Wtime();             // ProcessorID 0 measures time
+        printf("MPI solution Time: %f s\n", TimeStamp);
+    }
+    fflush(stdout);
+    MPI_Finalize();
 
     return 0;
 }
